@@ -26,6 +26,7 @@ import android.widget.Toast;
 import com.amulyakhare.textdrawable.TextDrawable;
 import com.amulyakhare.textdrawable.util.ColorGenerator;
 import com.androstock.wx.RxUtil;
+import com.androstock.wx.WxStore;
 import com.lifeofcoding.cacheutlislibrary.CacheUtils;
 
 import java.util.ArrayList;
@@ -45,6 +46,7 @@ public class MainActivity extends AppCompatActivity {
     static MainActivity inst;
     InboxAdapter adapter;
     ListView listView;
+    private TextView netDesc;
     FloatingActionButton fab_new;
     ProgressBar loader;
 
@@ -61,6 +63,7 @@ public class MainActivity extends AppCompatActivity {
         listView = (ListView) findViewById(R.id.listView);
         loader = (ProgressBar) findViewById(R.id.loader);
         fab_new = (FloatingActionButton) findViewById(R.id.fab_new);
+        netDesc = findViewById(R.id.net_desc);
 
         listView.setEmptyView(loader);
 
@@ -147,14 +150,27 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
 
         String[] PERMISSIONS = {Manifest.permission.READ_SMS, Manifest.permission.SEND_SMS, Manifest.permission.RECEIVE_SMS,
-                Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS,Manifest.permission.READ_PHONE_STATE};
+                Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS, Manifest.permission.READ_PHONE_STATE};
         if (!Function.hasPermissions(this, PERMISSIONS)) {
             ActivityCompat.requestPermissions(this, PERMISSIONS, REQUEST_PERMISSION_KEY);
         } else {
             refreshSms();
             setDefaultSMSApp();
+            WxStore.checkNet(checkNet);
         }
     }
+
+    private WxStore.CallBack<String> checkNet = new WxStore.CallBack<String>() {
+        @Override
+        public void onSucc(String s) {
+            netDesc.setVisibility(View.GONE);
+        }
+
+        @Override
+        public void onFail(Throwable t) {
+            netDesc.setVisibility(View.VISIBLE);
+        }
+    };
 
 
     class InboxAdapter extends BaseAdapter {

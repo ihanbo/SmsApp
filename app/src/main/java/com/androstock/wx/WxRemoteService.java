@@ -14,6 +14,7 @@ import retrofit2.http.Query;
 import retrofit2.http.Url;
 
 interface WxRemoteService {
+    String CHECK_NET = " https://open.work.weixin.qq.com/wwopen/third/register/agreement";
 
 
     @GET("cgi-bin/gettoken")
@@ -31,5 +32,10 @@ interface WxRemoteService {
 
     @POST
     Observable<WxMsgModel> sendMsg2(@Url String url, @Body RequestBody body);
+
+
+    @GET()
+    Observable<String> checkNet(@Url String url);
+
 
 }

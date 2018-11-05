@@ -17,6 +17,8 @@ import io.reactivex.Observable;
 import io.reactivex.ObservableEmitter;
 import io.reactivex.ObservableOnSubscribe;
 import io.reactivex.ObservableSource;
+import io.reactivex.Observer;
+import io.reactivex.disposables.Disposable;
 import io.reactivex.functions.Consumer;
 import io.reactivex.functions.Function;
 import io.reactivex.schedulers.Schedulers;
@@ -56,6 +58,12 @@ public class WxStore {
                             saveToken(tokenModel.access_token, tokenModel.expires_in);
                         }
                     }
+                }, new Consumer<Throwable>() {
+                    @Override
+                    public void accept(Throwable throwable) throws Exception {
+                        Log.i("hh", "WxStore  : accept: " + throwable.getMessage());
+                        throwable.printStackTrace();
+                    }
                 });
     }
 
@@ -70,13 +78,13 @@ public class WxStore {
 
 
     //先获取本地token，为空再获取远程token
-    public static Observable<String> getToken() {
+    private static Observable<String> getToken() {
         return getLocalToken().onErrorResumeNext(getRemoteToken());
     }
 
 
     //获取本地token
-    public static Observable<String> getLocalToken() {
+    private static Observable<String> getLocalToken() {
         return Observable.create(new ObservableOnSubscribe<String>() {
             @Override
             public void subscribe(ObservableEmitter<String> e) throws Exception {
@@ -96,7 +104,7 @@ public class WxStore {
     }
 
     //获取远程token
-    public static Observable<String> getRemoteToken() {
+    private static Observable<String> getRemoteToken() {
         return service.getToken3(corpid, secret).doOnNext(new Consumer<TokenModel>() {
             @Override
             public void accept(TokenModel tokenModel) throws Exception {
@@ -111,7 +119,33 @@ public class WxStore {
     }
 
 
-    public static Observable<WxMsgModel> sendMsgByHand(final String msg) {
+    //发送消息，不需要处理
+    public static void sendMsg(final String msg) {
+        sendMsgNeedHandle(msg).subscribe(new Observer<WxMsgModel>() {
+            @Override
+            public void onSubscribe(Disposable d) {
+                Log.i("hh", "WxStore  : onSubscribe: ");
+            }
+
+            @Override
+            public void onNext(WxMsgModel wxMsgModel) {
+                Log.i("hh", "WxStore  : onNext: ");
+            }
+
+            @Override
+            public void onError(Throwable e) {
+                Log.i("hh", "WxStore  : onError: ");
+            }
+
+            @Override
+            public void onComplete() {
+                Log.i("hh", "WxStore  : onComplete: ");
+            }
+        });
+    }
+
+    //发送消息
+    private static Observable<WxMsgModel> sendMsgNeedHandle(final String msg) {
         return getToken().flatMap(new Function<String, ObservableSource<WxMsgModel>>() {
             @Override
             public ObservableSource<WxMsgModel> apply(String s) throws Exception {
@@ -136,25 +170,50 @@ public class WxStore {
         }).compose(RxUtil.<WxMsgModel>getTransformer());
     }
 
-    public static void sendMsg(final String msg) {
-        sendMsgByHand(msg).subscribe(new Consumer<WxMsgModel>() {
-            @Override
-            public void accept(WxMsgModel wxMsgModel) throws Exception {
-                Log.i("hh", "sendMsg2  : succ: " + wxMsgModel.errcode + "" + wxMsgModel.errmsg);
-            }
-        }, new Consumer<Throwable>() {
-            @Override
-            public void accept(Throwable throwable) throws Exception {
-                Log.i("hh", "sendMsg2  : fail: " + throwable.getMessage());
-            }
-        });
-    }
-
+    //发送消息
     private static Observable<WxMsgModel> sendMsg(String token, String msg) {
         String url = BASEURL + "cgi-bin/message/send?access_token=" + token;
         String text = new Gson().toJson(new WxMsg(msg));
         RequestBody json = RequestBody.create(MediaType.parse("application/json"), text);
         return service.sendMsg2(url, json);
+    }
+
+
+    //检查网络
+    public static void checkNet(final CallBack<String> callBack) {
+        String url = WxRemoteService.CHECK_NET;
+        service.checkNet(url).compose(RxUtil.<String>getTransformer2()).subscribe(new Observer<String>() {
+            @Override
+            public void onSubscribe(Disposable d) {
+
+            }
+
+            @Override
+            public void onNext(String s) {
+                if (callBack != null) {
+                    callBack.onSucc(s);
+                }
+            }
+
+            @Override
+            public void onError(Throwable e) {
+                if (callBack != null) {
+                    callBack.onFail(e);
+                }
+            }
+
+            @Override
+            public void onComplete() {
+
+            }
+        });
+    }
+
+
+    public interface CallBack<T> {
+        void onSucc(T t);
+
+        void onFail(Throwable t);
     }
 
 
